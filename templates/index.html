@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>Digit Recognition</title>
+	<style>
+		#canvas {
+			border: 1px solid black;
+			margin-bottom: 10px;
+		}
+
+		.center-content {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>AIAS Project</h1>
+	<div class="center-content">
+		<h1>Digit Recognition</h1>
+		<canvas id="canvas" width="280" height="280" style="border:1px solid #000000;"></canvas><br>
+		<button id="clear-btn">Clear</button>
+		<br>
+		<button id="submit-btn">Submit</button>
+		<p id="prediction"></p>
+	</div>
+	<script>
+		const canvas = document.getElementById('canvas');
+		const ctx = canvas.getContext('2d');
+		let isDrawing = false;
+
+		canvas.addEventListener('mousedown', startDrawing);
+		canvas.addEventListener('mousemove', draw);
+		canvas.addEventListener('mouseup', stopDrawing);
+		canvas.addEventListener('mouseout', stopDrawing);
+
+		document.getElementById('clear-btn').addEventListener('click', clearCanvas);
+		document.getElementById('submit-btn').addEventListener('click', submitDrawing);
+
+		function startDrawing(e) {
+			isDrawing = true;
+			draw(e);
+		}
+
+		function stopDrawing() {
+			isDrawing = false;
+			ctx.beginPath();
+		}
+
+		function draw(e) {
+			if (!isDrawing) return;
+
+			ctx.lineWidth = 40;
+			ctx.lineCap = 'round';
+			ctx.strokeStyle = '#000000';
+
+			const rect = canvas.getBoundingClientRect();
+			const x = e.clientX - rect.left;
+			const y = e.clientY - rect.top;
+
+			ctx.lineTo(x, y);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.moveTo(x, y);
+		}
+
+		function clearCanvas() {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			document.getElementById('prediction').textContent = "";
+		}
+
+		function submitDrawing() {
+			const smallCanvas = document.createElement('canvas');
+			const smallCtx = smallCanvas.getContext('2d');
+			smallCanvas.width = 28;
+			smallCanvas.height = 28;
+			smallCtx.drawImage(canvas, 0, 0, 28, 28);
+
+			const pngData = smallCanvas.toDataURL('image/png');
+
+			fetch('/save_image', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({image: pngData}),
+			})
+				.then(response => response.json())
+				.then(data => {
+					if (data.prediction !== undefined) {
+						document.getElementById('prediction').textContent = `Predicted value: ${data.prediction}`;
+					} else {
+						document.getElementById('prediction').textContent = `Error: ${data.error}`;
+					}
+				})
+				.catch(error => {
+					console.error('Error:', error);
+					document.getElementById('prediction').textContent = 'Error in prediction';
+				});
+
+			clearCanvas();
+		}
+	</script>
+</body>
+
+</html>
